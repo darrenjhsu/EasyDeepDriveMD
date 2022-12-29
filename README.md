@@ -112,5 +112,12 @@ In `main.sh` these are updated once a stage is completed.
 If the workflow is terminated (e.g. due to wall time limit or completed required rounds),
 it will restart from that stage.
 
-## Performance
+## Other features
+
+Since the `eps` of DBSCAN dictates how many outliers there are, I allowed it to be varied within and across rounds.
+The goal is to select an `eps` that generates slightly more outliers than number of individual simulations.
+E.g. if I try to select 6 simulations, then 6 outliers is better than 8 than 20 than 4 than 0.
+
+Also, the CA maps are frequently duplicated, so one can actually group them in DBSCAN by putting `sample_weights`
+on every unique CA map vector (flattened matrix). This saves tremendous amount of DBSCAN time (for me 50s -> 0.4 s).
 
