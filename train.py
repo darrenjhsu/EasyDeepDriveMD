@@ -2,8 +2,8 @@
 
 import sys, os
 
-if len(sys.argv) < 6:
-    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name>')
+if len(sys.argv) < 7:
+    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name> <number of latent dimensions>')
     exit()
 
 import numpy as np
@@ -22,6 +22,7 @@ n_sim = int(sys.argv[2])
 psf = sys.argv[3]
 dcd_fname = sys.argv[4]
 init_fname = sys.argv[5].split('/')[-1]
+num_latent_dim = int(sys.argv[6])
 
 CM_this = []
 
@@ -82,7 +83,7 @@ train_dataset = (tf.data.Dataset.from_tensor_slices(train_data).batch(batch_size
 valid_dataset = (tf.data.Dataset.from_tensor_slices(valid_data).batch(batch_size))
 
 print("Training CVAE ...")
-model = CVAE(10)
+model = CVAE(num_latent_dim)
 if round_idx > 0:
     try:
         latest = tf.train.latest_checkpoint(f'../Simulations/saved_models/round_{round_idx-1}/')
@@ -146,7 +147,9 @@ if round_idx > 0:
             eps_init = float(f.read().strip())
     except Exception as e:
         print(e)
-if eps_init < 0.25:
+if round_idx == 0:
+    eps_choices = np.linspace(0.05, 2.5, num = 50)
+elif eps_init < 0.25:
     eps_choices = np.linspace(0.45, 0.05, num = 9)
 else:
     eps_choices = np.linspace(eps_init + 0.2, eps_init - 0.2, num = 9)
@@ -165,8 +168,8 @@ for eps in eps_choices:
     #print(outliers)
     t1 = time.time()
     print(f'There are {sum_outliers} outliers for eps = {eps} ({(t1-t0)*1000:.1f} ms)')
-    #if sum_outliers >= n_sim:
-    #    break
+    if sum_outliers >= n_sim and round_idx > 0:
+        break
 
 # Select best DBSCAN model ... best is exactly n_sim outliers, 
 # then slightly more than n_sim outliers,

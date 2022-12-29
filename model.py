@@ -10,12 +10,12 @@ class CVAE(tf.keras.Model):
     self.latent_dim = latent_dim
     self.encoder = tf.keras.Sequential(
         [
-            tf.keras.layers.InputLayer(input_shape=(11, 11, 1)),
-            tf.keras.layers.ZeroPadding2D(padding=((0, 1), (0, 1))),
+            tf.keras.layers.InputLayer(input_shape=(28, 28, 1)),
+            #tf.keras.layers.ZeroPadding2D(padding=((0, 1), (0, 1))),
             tf.keras.layers.Conv2D(
                 filters=32, kernel_size=3, strides=(2, 2), activation='relu'),
             tf.keras.layers.Conv2D(
-                filters=64, kernel_size=3, strides=(1, 1), activation='relu'),
+                filters=64, kernel_size=3, strides=(2, 2), activation='relu'),
             tf.keras.layers.Flatten(),
             # No activation
             tf.keras.layers.Dense(latent_dim + latent_dim),
@@ -26,8 +26,8 @@ class CVAE(tf.keras.Model):
     self.decoder = tf.keras.Sequential(
         [
             tf.keras.layers.InputLayer(input_shape=(latent_dim,)),
-            tf.keras.layers.Dense(units=3*3*32, activation=tf.nn.relu),
-            tf.keras.layers.Reshape(target_shape=(3, 3, 32)),
+            tf.keras.layers.Dense(units=7*7*32, activation=tf.nn.relu),
+            tf.keras.layers.Reshape(target_shape=(7, 7, 32)),
             tf.keras.layers.Conv2DTranspose(
                 filters=64, kernel_size=3, strides=2, padding='same',
                 activation='relu'),
@@ -37,7 +37,7 @@ class CVAE(tf.keras.Model):
             # No activation
             tf.keras.layers.Conv2DTranspose(
                 filters=1, kernel_size=3, strides=1, padding='same'),
-            tf.keras.layers.Cropping2D(cropping=((0, 1), (0, 1)))
+            #tf.keras.layers.Cropping2D(cropping=((0, 1), (0, 1)))
         ], name="decoder"
     )
 #    self.decoder.summary()

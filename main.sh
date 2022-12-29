@@ -5,11 +5,12 @@
 # Source config
 n_rounds=80
 n_sims=6
-psf=../Structures/CsA_wb.psf
-init_coord=../Template/CsA_init.pdb
-sim_config=../Template/CsA.conf
+psf=../Structures/1FME_wb_Cl.psf
+init_coord=../Template/BBA_init.pdb
+sim_config=../Template/BBA.conf
 # This has to match the output of your simulations
-sample_dcd=CsA_sample.dcd
+sample_dcd=BBA_sample.dcd
+latent=10
 
 mkdir -p ../Simulations
 mkdir -p ../Simulations/data
@@ -74,7 +75,7 @@ do
   if [ $round -ge $restart_round ] && [ $restart_stage -le 2 ]; then
     # Run training (CVAE), also suggests new initial coordinates
     echo "`date` Train CVAE and suggest new inits"
-    jsrun -n1 -g1 -c42 python train.py $round $n_sims $psf $sample_dcd $init_coord
+    jsrun -n1 -g1 -c42 python train.py $round $n_sims $psf $sample_dcd $init_coord $latent
   
     restart_stage=0
     echo -e restart_round=$((round+1)) > ../Simulations/progress
