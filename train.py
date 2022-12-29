@@ -3,7 +3,7 @@
 import sys, os
 
 if len(sys.argv) < 7:
-    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name> <number of latent dimensions>')
+    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name> <number of latent dimensions> <target_pdb (optional)>')
     exit()
 
 import numpy as np
@@ -16,6 +16,7 @@ import time
 from model import *
 from sklearn.cluster import DBSCAN
 import MDAnalysis as mda
+from MDAnalysis.analysis.rms import rmsd
 
 round_idx = int(sys.argv[1])
 n_sim = int(sys.argv[2])
@@ -23,6 +24,10 @@ psf = sys.argv[3]
 dcd_fname = sys.argv[4]
 init_fname = sys.argv[5].split('/')[-1]
 num_latent_dim = int(sys.argv[6])
+target_pdb = sys.argv[7]
+#n_outliers = n_sim     # This is for exploring conformational space
+n_outliers = 3 * n_sim # This is for guided search
+
 
 CM_this = []
 
@@ -168,14 +173,14 @@ for eps in eps_choices:
     #print(outliers)
     t1 = time.time()
     print(f'There are {sum_outliers} outliers for eps = {eps} ({(t1-t0)*1000:.1f} ms)')
-    if sum_outliers >= n_sim and round_idx > 0:
+    if sum_outliers >= n_outliers and round_idx > 0:
         break
 
-# Select best DBSCAN model ... best is exactly n_sim outliers, 
-# then slightly more than n_sim outliers,
+# Select best DBSCAN model ... best is exactly n_outliers outliers, 
+# then slightly more than n_outliers outliers,
 # then a lot more, then a little less, then none
 outlier_rank = np.array(num_outliers)
-outlier_rank[outlier_rank < n_sim] = outlier_rank.max() + n_sim + 1 - outlier_rank[outlier_rank < n_sim]
+outlier_rank[outlier_rank < n_outliers] = outlier_rank.max() + n_outliers + 1 - outlier_rank[outlier_rank < n_outliers]
 cls_sel = np.argmin(outlier_rank)
 print(f'Using eps = {eps_choices[cls_sel]}, and there are {num_outliers[cls_sel]} outliers')
 cls = cls_collection[cls_sel]
@@ -192,6 +197,20 @@ outliers = frames[CM_label == -1]
 
 print(f'There are {len(outliers)} outliers')
 
+
+# This is for exploring conformational space
+#if len(outliers) < n_sim:
+#    extra_select = frames[np.random.choice(np.array(np.arange(len(data)))[np.nonzero(CM_label > -1)], n_sim - len(outliers), replace=False)]
+#    if len(outliers) == 0:
+#        select = extra_select
+#    else:
+#        select = np.vstack((outliers, extra_select))
+#elif len(outliers) > n_sim:
+#    select = outliers[np.random.choice(len(outliers), n_sim, replace=False)]
+#else: # len outliers match n_sim
+#    select = outliers
+
+# This is for guided search
 if len(outliers) < n_sim:
     extra_select = frames[np.random.choice(np.array(np.arange(len(data)))[np.nonzero(CM_label > -1)], n_sim - len(outliers), replace=False)]
     if len(outliers) == 0:
@@ -199,10 +218,23 @@ if len(outliers) < n_sim:
     else:
         select = np.vstack((outliers, extra_select))
 elif len(outliers) > n_sim:
-    select = outliers[np.random.choice(len(outliers), n_sim, replace=False)]
+    # Calculate rmsd
+    target = mda.Universe(target_pdb)
+    target_sel = target.select_atoms('protein and not name H*')
+    target_pos = target_sel.positions
+    outliers_rmsd = []
+    for idx, sel in enumerate(outliers):
+        U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}')
+        U.trajectory[sel[2]]
+        U_sel = U.select_atoms('protein and not name H*')
+        U_pos = U_sel.positions
+        r = rmsd(target_pos, U_pos, superposition=True)
+        #print(f'Outlier {idx} has rmsd of {r:.3f} A')
+        outliers_rmsd.append(r)
+    select = outliers[np.argsort(outliers_rmsd)[:n_sim]]
+    print(f'Selected outliers with minimal RMSD: {np.sort(outliers_rmsd)[:n_sim]}')
 else: # len outliers match n_sim
     select = outliers
-
 print(select)
 
 print("Finding and outputting specific frames ...")
