@@ -139,12 +139,12 @@ print(CM_embed[0].shape)
 
 
 print("Running DBSCAN in latent space ...")
+eps_init = 0.3
 if round_idx > 0:
     try:
         with open('../Simulations/eps','r') as f:
             eps_init = float(f.read().strip())
     except Exception as e:
-        eps_init = 0.3
         print(e)
 if eps_init < 0.25:
     eps_choices = np.linspace(0.45, 0.05, num = 9)
