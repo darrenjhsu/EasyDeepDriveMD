@@ -8,6 +8,7 @@ n_sims=6
 psf=../Structures/CsA_wb.psf
 init_coord=../Template/CsA_init.pdb
 sim_config=../Template/CsA.conf
+# This has to match the output of your simulations
 sample_dcd=CsA_sample.dcd
 
 mkdir -p ../Simulations
@@ -73,7 +74,7 @@ do
   if [ $round -ge $restart_round ] && [ $restart_stage -le 2 ]; then
     # Run training (CVAE), also suggests new initial coordinates
     echo "`date` Train CVAE and suggest new inits"
-    jsrun -n1 -g1 -c42 python train.py $round $n_sims $psf
+    jsrun -n1 -g1 -c42 python train.py $round $n_sims $psf $sample_dcd $init_coord
   
     restart_stage=0
     echo -e restart_round=$((round+1)) > ../Simulations/progress

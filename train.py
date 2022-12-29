@@ -3,7 +3,7 @@
 import sys, os
 
 if len(sys.argv) < 4:
-    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path>')
+    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name>')
     exit()
 
 import numpy as np
@@ -20,6 +20,8 @@ import MDAnalysis as mda
 round_idx = int(sys.argv[1])
 n_sim = int(sys.argv[2])
 psf = sys.argv[3]
+dcd_fname = sys.argv[4]
+init_fname = sys.argv[5].split('/')[-1]
 
 CM_this = []
 
@@ -204,10 +206,10 @@ print("Finding and outputting specific frames ...")
 
 for idx, sel in enumerate(select):
     os.makedirs(f'../Simulations/{round_idx+1}/{idx}', exist_ok=True)
-    U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/CsA_sample.dcd')
+    U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}')
     U.trajectory[sel[2]]
     Uall = U.select_atoms('all')
-    Uall.write(f'../Simulations/{round_idx+1}/{idx}/CsA_init.pdb')
+    Uall.write(f'../Simulations/{round_idx+1}/{idx}/{init_fname}')
 
 with open('../Simulations/eps', 'w') as f:
     f.write(f'{eps_choices[cls_sel]:.2f}')
