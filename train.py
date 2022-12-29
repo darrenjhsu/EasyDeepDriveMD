@@ -2,7 +2,7 @@
 
 import sys, os
 
-if len(sys.argv) < 4:
+if len(sys.argv) < 6:
     print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name>')
     exit()
 
