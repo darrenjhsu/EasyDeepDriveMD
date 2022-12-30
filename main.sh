@@ -4,7 +4,7 @@
 
 # Source config
 n_rounds=80
-n_sims=6
+n_sims=12
 psf=../Structures/1FME_wb_Cl.psf
 init_coord=../Template/BBA_init.pdb
 sim_config=../Template/BBA.conf
@@ -62,7 +62,7 @@ do
     echo "`date` Run simulations and post processing"
     for idx in `seq 0 $((n_sims - 1))`
     do
-      sh sim.sh $psf $sample_dcd $round $idx &
+      sh sim.sh $psf $sample_dcd $round $idx $target &
     done
     wait
     
@@ -70,10 +70,26 @@ do
     echo -e restart_round=$round > ../Simulations/progress 
     echo -e restart_stage=2 >> ../Simulations/progress
   else
-    echo Skipping simulation and post-processing for round $round
+    echo Skipping simulation for round $round
   fi
 
   if [ $round -ge $restart_round ] && [ $restart_stage -le 2 ]; then
+    # Stage 2: post process the simulation 
+    echo "`date` Run simulations and post processing"
+    for idx in `seq 0 $((n_sims - 1))`
+    do
+      jsrun -n1 -c7 python postprocess.py $psf $sample_dcd $round $idx $target
+    done
+    wait
+    
+    restart_stage=3
+    echo -e restart_round=$round > ../Simulations/progress 
+    echo -e restart_stage=3 >> ../Simulations/progress
+  else
+    echo Skipping post-processing for round $round
+  fi
+
+  if [ $round -ge $restart_round ] && [ $restart_stage -le 3 ]; then
     # Run training (CVAE), also suggests new initial coordinates
     echo "`date` Train CVAE and suggest new inits"
     jsrun -n1 -g1 -c42 python train.py $round $n_sims $psf $sample_dcd $init_coord $latent $target

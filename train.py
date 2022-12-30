@@ -3,7 +3,7 @@
 import sys, os
 
 if len(sys.argv) < 7:
-    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name> <number of latent dimensions> <target_pdb (optional)>')
+    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name> <number of latent dimensions> ')
     exit()
 
 import numpy as np
@@ -24,36 +24,43 @@ psf = sys.argv[3]
 dcd_fname = sys.argv[4]
 init_fname = sys.argv[5].split('/')[-1]
 num_latent_dim = int(sys.argv[6])
-target_pdb = sys.argv[7]
 #n_outliers = n_sim     # This is for exploring conformational space
-n_outliers = 3 * n_sim # This is for guided search
+n_outliers = 8 * n_sim # This is for guided search
 
 
 CM_this = []
-
+RMSD_this = []
 if round_idx > 0:
     print(f"Loading npy of previous rounds: round 0 to {round_idx-1}")
-    CM_prev = np.load(f'../Simulations/data/rounds_0_to_{round_idx-1}.npy')
+    CM_prev = np.load(f'../Simulations/data/CM_rounds_0_to_{round_idx-1}.npy')
+    RMSD_prev = np.load(f'../Simulations/data/RMSD_rounds_0_to_{round_idx-1}.npy')
 
 for i in range(n_sim):
     print(f"Loading npy of this round: idx {i}")
     try:
-        CM_this.append(np.load(f'../Simulations/data/{round_idx}_{i}.npy'))
+        CM_this.append(np.load(f'../Simulations/data/CM_{round_idx}_{i}.npy'))
+        RMSD_this.append(np.load(f'../Simulations/data/RMSD_{round_idx}_{i}.npy'))
     except Exception as e:
         print(e)
 
 CM_this = np.concatenate(CM_this, axis=0)
+RMSD_this = np.concatenate(RMSD_this, axis=0)
 
 print("Concatenating npy of this round with all previous rounds")
 if round_idx > 0:
     CM_all = np.concatenate([CM_prev, CM_this], axis=0)
+    RMSD_all = np.concatenate([RMSD_prev, RMSD_this], axis=0)
 else:
     CM_all = CM_this
+    RMSD_all = RMSD_this
 
 print(f"Saving npys of round 0 to {round_idx}")
-np.save(f'../Simulations/data/rounds_0_to_{round_idx}.npy', CM_all)
+np.save(f'../Simulations/data/CM_rounds_0_to_{round_idx}.npy', CM_all)
+np.save(f'../Simulations/data/RMSD_rounds_0_to_{round_idx}.npy', RMSD_all)
 
 np.random.shuffle(CM_all)
+RMSD_dict = {(x[0], x[1], x[2]): x[3] for x in RMSD_all}
+
 
 n_res = np.sqrt(CM_all.shape[-1]).astype(int)
 n_frames = len(CM_all)
@@ -172,7 +179,7 @@ for eps in eps_choices:
     cls_collection.append(cls)
     #print(outliers)
     t1 = time.time()
-    print(f'There are {sum_outliers} outliers for eps = {eps} ({(t1-t0)*1000:.1f} ms)')
+    print(f'There are {sum_outliers} outliers for eps = {eps:.2f} ({(t1-t0)*1000:.1f} ms)')
     if sum_outliers >= n_outliers and round_idx > 0:
         break
 
@@ -211,6 +218,7 @@ print(f'There are {len(outliers)} outliers')
 #    select = outliers
 
 # This is for guided search
+t0 = time.time()
 if len(outliers) < n_sim:
     extra_select = frames[np.random.choice(np.array(np.arange(len(data)))[np.nonzero(CM_label > -1)], n_sim - len(outliers), replace=False)]
     if len(outliers) == 0:
@@ -219,23 +227,17 @@ if len(outliers) < n_sim:
         select = np.vstack((outliers, extra_select))
 elif len(outliers) > n_sim:
     # Calculate rmsd
-    target = mda.Universe(target_pdb)
-    target_sel = target.select_atoms('protein and not name H*')
-    target_pos = target_sel.positions
     outliers_rmsd = []
-    for idx, sel in enumerate(outliers):
-        U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}')
-        U.trajectory[sel[2]]
-        U_sel = U.select_atoms('protein and not name H*')
-        U_pos = U_sel.positions
-        r = rmsd(target_pos, U_pos, superposition=True)
+    for idx, sel in enumerate(outliers): 
         #print(f'Outlier {idx} has rmsd of {r:.3f} A')
-        outliers_rmsd.append(r)
+        outliers_rmsd.append(RMSD_dict[(sel[0], sel[1], sel[2])])
     select = outliers[np.argsort(outliers_rmsd)[:n_sim]]
     print(f'Selected outliers with minimal RMSD: {np.sort(outliers_rmsd)[:n_sim]}')
 else: # len outliers match n_sim
     select = outliers
 print(select)
+t1 = time.time()
+print(f'Selecting outliers took {(t1-t0)*1000:.2f} ms')
 
 print("Finding and outputting specific frames ...")
 
