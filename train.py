@@ -9,14 +9,11 @@ if len(sys.argv) < 7:
 import numpy as np
 
 import glob
-import PIL
-import tensorflow as tf
-import tensorflow_probability as tfp
 import time
 from model import *
+from selection import *
 from sklearn.cluster import DBSCAN
 import MDAnalysis as mda
-from MDAnalysis.analysis.rms import rmsd
 
 round_idx = int(sys.argv[1])
 n_sim = int(sys.argv[2])
@@ -32,13 +29,14 @@ CM_this = []
 RMSD_this = []
 if round_idx > 0:
     print(f"Loading npy of previous rounds: round 0 to {round_idx-1}")
-    CM_prev = np.load(f'../Simulations/data/CM_rounds_0_to_{round_idx-1}.npy')
+    CA_prev = np.load(f'../Simulations/data/CA_rounds_0_to_{round_idx-1}.npy')
+    PD_prev = np.load(f'../Simulations/data/PD_rounds_0_to_{round_idx-1}.npy')
     RMSD_prev = np.load(f'../Simulations/data/RMSD_rounds_0_to_{round_idx-1}.npy')
 
 for i in range(n_sim):
     print(f"Loading npy of this round: idx {i}")
     try:
-        CM_this.append(np.load(f'../Simulations/data/CM_{round_idx}_{i}.npy'))
+        CA_this.append(np.load(f'../Simulations/data/CA_{round_idx}_{i}.npy'))
         RMSD_this.append(np.load(f'../Simulations/data/RMSD_{round_idx}_{i}.npy'))
     except Exception as e:
         print(e)
@@ -88,7 +86,7 @@ train_data, valid_data = (
     data[train_val_split:],  # type: ignore[index]
 )
 
-batch_size = min(2048, max(int(len(train_data) / 8) // 16 * 16, 1))
+batch_size = min(4096, max(int(len(train_data) / 8) // 16 * 16, 1))
 print(f'Batch size is {batch_size}')
 all_dataset = (tf.data.Dataset.from_tensor_slices(data).batch(batch_size))
 train_dataset = (tf.data.Dataset.from_tensor_slices(train_data).batch(batch_size))
@@ -96,7 +94,7 @@ valid_dataset = (tf.data.Dataset.from_tensor_slices(valid_data).batch(batch_size
 
 print("Training CVAE ...")
 model = CVAE(num_latent_dim)
-if round_idx > 0:
+if round_idx > 0 and round_idx % 4 > 0:
     try:
         latest = tf.train.latest_checkpoint(f'../Simulations/saved_models/round_{round_idx-1}/')
         model.load_weights(latest)
@@ -104,7 +102,7 @@ if round_idx > 0:
     except Exception as e:
         print(e)
 else:
-    print("Round 0: Start fresh model")
+    print(f"Round {round_idx}: Start fresh model")
 
 optimizer = tf.keras.optimizers.Adam(1e-4)
 epochs = 400
@@ -152,26 +150,27 @@ print(CM_embed[0].shape)
 
 
 print("Running DBSCAN in latent space ...")
-eps_init = 0.3
-if round_idx > 0:
-    try:
-        with open('../Simulations/eps','r') as f:
-            eps_init = float(f.read().strip())
-    except Exception as e:
-        print(e)
-if round_idx == 0:
-    eps_choices = np.linspace(0.05, 2.5, num = 50)
-elif eps_init < 0.25:
-    eps_choices = np.linspace(0.45, 0.05, num = 9)
-else:
-    eps_choices = np.linspace(eps_init + 0.2, eps_init - 0.2, num = 9)
+eps_init = 1.3
+#if round_idx > 0:
+#    try:
+#        with open('../Simulations/eps','r') as f:
+#            eps_init = float(f.read().strip())
+#    except Exception as e:
+#        print(e)
+#if round_idx == 0:
+#    eps_choices = np.linspace(0.05, 2.5, num = 50)
+#elif eps_init < 0.25:
+#    eps_choices = np.linspace(0.45, 0.05, num = 9)
+#else:
+#    eps_choices = np.linspace(eps_init + 0.2, eps_init - 0.2, num = 9)
 
 #eps_choices = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5][::-1]
+eps_choices = [1.3]
 num_outliers = []
 cls_collection = []
 t0 = time.time()
 for eps in eps_choices:
-    cls = DBSCAN(eps=eps, n_jobs=1, algorithm='ball_tree')
+    cls = DBSCAN(eps=eps, n_jobs=1, algorithm='ball_tree', min_samples=10)
     cls.fit(CM_embed[0], sample_weight=CM_weight)
     #print("Suggesting outliers in latent space ...")
     sum_outliers = np.sum(CM_weight[cls.labels_ == -1])
@@ -204,39 +203,12 @@ outliers = frames[CM_label == -1]
 
 print(f'There are {len(outliers)} outliers')
 
-
-# This is for exploring conformational space
-#if len(outliers) < n_sim:
-#    extra_select = frames[np.random.choice(np.array(np.arange(len(data)))[np.nonzero(CM_label > -1)], n_sim - len(outliers), replace=False)]
-#    if len(outliers) == 0:
-#        select = extra_select
-#    else:
-#        select = np.vstack((outliers, extra_select))
-#elif len(outliers) > n_sim:
-#    select = outliers[np.random.choice(len(outliers), n_sim, replace=False)]
-#else: # len outliers match n_sim
-#    select = outliers
-
-# This is for guided search
 t0 = time.time()
-if len(outliers) < n_sim:
-    extra_select = frames[np.random.choice(np.array(np.arange(len(data)))[np.nonzero(CM_label > -1)], n_sim - len(outliers), replace=False)]
-    if len(outliers) == 0:
-        select = extra_select
-    else:
-        select = np.vstack((outliers, extra_select))
-elif len(outliers) > n_sim:
-    # Calculate rmsd
-    outliers_rmsd = []
-    for idx, sel in enumerate(outliers): 
-        #print(f'Outlier {idx} has rmsd of {r:.3f} A')
-        outliers_rmsd.append(RMSD_dict[(sel[0], sel[1], sel[2])])
-    select = outliers[np.argsort(outliers_rmsd)[:n_sim]]
-    print(f'Selected outliers with minimal RMSD: {np.sort(outliers_rmsd)[:n_sim]}')
-else: # len outliers match n_sim
-    select = outliers
-print(select)
+#select = select_explore(frames, CM_label, n_sim)
+#select = select_guided_DDMD(frames, CM_label, n_sim, RMSD_dict, metric='min')
+select = select_FAST(frames, CM_label, n_sim, RMSD_dict, metric='min', cls=cls)
 t1 = time.time()
+print(select)
 print(f'Selecting outliers took {(t1-t0)*1000:.2f} ms')
 
 print("Finding and outputting specific frames ...")

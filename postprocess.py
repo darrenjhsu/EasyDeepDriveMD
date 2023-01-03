@@ -21,15 +21,14 @@ except:
 
 U = mda.Universe(psf, f'../Simulations/{round_idx}/{sim_idx}/{dcd}')
 
-CA = U.select_atoms('name CA')
-CM = []
-
+CA = U.select_atoms('backbone or name CB')
+CA_list = []
 for ts in U.trajectory:
-    CM.append(np.hstack([round_idx, sim_idx, ts.frame, distances.contact_matrix(CA.positions, cutoff=8).flatten()]))
+    CA_list.append(np.hstack([round_idx, sim_idx, ts.frame, CA.positions.flatten()]))
 
-CM = np.array(CM)
+CA_list = np.array(CA_list)
 
-np.save(f'../Simulations/data/CM_{round_idx}_{sim_idx}.npy', CM)
+np.save(f'../Simulations/data/CA_{round_idx}_{sim_idx}.npy', CA_list)
 
 
 if target is not None:
@@ -37,8 +36,10 @@ if target is not None:
     
     R = rms.RMSD(U, T, select='protein and not name H*', tol_mass=np.inf)
     R.run()
+
+    print(R.rmsd.shape)
     
-    RMSD = np.hstack([CM[:,:3], R.rmsd[:,-1][:, None]])
+    RMSD = np.hstack([CA_list[:,:3], R.rmsd[:,-1][:, None]])
     
     np.save(f'../Simulations/data/RMSD_{round_idx}_{sim_idx}.npy', RMSD)
 
