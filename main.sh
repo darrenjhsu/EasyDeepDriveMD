@@ -3,7 +3,7 @@
 # The main workflow for adaptive sampling through CVAE
 
 # Source config
-n_rounds=160
+n_rounds=300
 n_sims=6
 psf=../Structures/1FME_wb_Cl.psf
 init_coord=../Template/BBA_init.pdb
