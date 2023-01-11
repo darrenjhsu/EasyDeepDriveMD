@@ -3,14 +3,15 @@
 # The main workflow for adaptive sampling through CVAE
 
 # Source config
-n_rounds=160
+n_rounds=300
 n_sims=6
-psf=../Structures/1FME_wb_Cl.psf
-init_coord=../Template/BBA_init.pdb
-sim_config=../Template/BBA.conf
+psf=../Structures/8b7i_wb_Cl.psf
+init_coord=../Template/HSP90_init.pdb
+sim_config=../Template/HSP90.conf
+config=HSP90.conf
 # This has to match the output of your simulations
-sample_dcd=BBA_sample.dcd
-target=../Template/BBA_target.pdb
+sample_dcd=HSP90_sample.dcd
+target=../Template/HSP90_target.pdb
 #latent=10
 
 mkdir -p ../Simulations
@@ -68,7 +69,7 @@ do
     fi
     for idx in `seq 0 $((n_sims - 1))`
     do
-      sh sim.sh $psf $sample_dcd $round $idx $target &
+      sh sim.sh $psf $sample_dcd $round $idx $config &
     done
     # In addition, use the remaining CPUs to calculate and store
     # pairwise distances as well as suggest new inits
