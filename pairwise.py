@@ -173,7 +173,7 @@ t0 = time.time()
 
 from sklearn.cluster import DBSCAN
 
-cls = DBSCAN(eps=1.0, min_samples=5, metric='precomputed')
+cls = DBSCAN(eps=1.0, min_samples=10, metric='precomputed')
 #cls.fit(PD_all)
 #print('Number of clusters (dense):', cls.labels_.max()+1)
 #print('Number of outliers (dense):', np.sum(cls.labels_ == -1))
