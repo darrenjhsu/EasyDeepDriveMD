@@ -209,7 +209,7 @@ for idx, sel in enumerate(select):
     U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}')
     U.trajectory[sel[2]]
     Uall = U.select_atoms('all')
-    Uall.write(f'../Simulations/{round_idx+1}/{idx}/{init_fname}')
+    Uall.write(f'../Simulations/{round_idx+1}/{idx}/{init_fname}', bonds=False)
 
 with open('../Simulations/eps', 'w') as f:
     f.write(f'{eps_choices[cls_sel]:.2f}')
