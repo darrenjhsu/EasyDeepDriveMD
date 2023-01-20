@@ -3,7 +3,7 @@
 # The main workflow for adaptive sampling through CVAE
 
 # Source config
-n_rounds=80
+n_rounds=3
 n_sims=6
 psf=../Structures/CsA_wb.psf
 template_folder=../Template
@@ -61,7 +61,7 @@ do
     echo "`date` Run simulations and post processing"
     for idx in `seq 0 $((n_sims - 1))`
     do
-      sh sim.sh $psf $sample_dcd $round $idx &
+      sh sim.sh $psf $sample_dcd $round $idx $sim_config &
     done
     wait
     
