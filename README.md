@@ -98,10 +98,11 @@ E.g. In the case of contact map matrices, output is `N_frames * (3 + N_residue *
 1. Edit `train.py` so that it takes your data and processes it correctly. 
 You don't necessarily need to use a CVAE - you can do any model, ML or not, 
 so long as it selects some frames for the next round.
-1. Edit or create another `model.py` if you choose to use CVAE - 
-make sure the input dimensions match number of residues of your protein.
+1. Edit `model.py` if you choose to use CVAE (or create another `model.py`).
+For CVAE, make sure the input dimensions match number of residues of your protein.
 In case you have an odd number of residues, use ZeroPadding2D in encoder and Cropping2D in decoder. 
 Use `model_dim.py` to check your model dimensions.
+For other models, just make sure the VAE requirement (that the model tries to reconstruct original data) is met.
 
 With all things edited, launch by `sh main.sh`. You should see progress.
 
