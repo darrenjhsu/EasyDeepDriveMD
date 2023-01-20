@@ -1,11 +1,6 @@
 # EasyDeepDriveMD
 Poor person's DeepDriveMD implementation
 
-## Reason
-
-Because I was waiting for Slate access from OLCF to run actual DeepDriveMD,
-which requires MongoDB and RabbitMQ.
-So I decided to implement a slimmer DeepDriveMD.
 
 ## Requirement
 
@@ -23,6 +18,12 @@ module load cuda gcc fftw
 conda create -p /your/conda/env/path --clone /sw/summit/open-ce/anaconda-base/envs/open-ce-1.5.2-py39-0
 conda activate -p /your/conda/env/path
 pip install MDAnalysis
+```
+
+Afterwards, make sure MDAnalysis runs by
+```bash
+python
+import MDAnalysis as mda
 ```
 
 ## Structure
@@ -63,7 +64,7 @@ Experiment/
 
 ## How it works
 
-The `main.sh` has three stages for each round: prepare / sample / train & propose.
+The `main.sh` is the main script. It has three stages for each round: prepare / sample / train & propose.
 
 In the prepare stage, the script (EDDMD) copies `sim_config` to each simulation folder for that round.
 If it is the first round, EDDMD copies `init_coord` to each simulation folder as well.
@@ -71,6 +72,8 @@ If it is the first round, EDDMD copies `init_coord` to each simulation folder as
 In the simulation stage, EDDMD calls `sim.sh` for every individual simulations with different arguments.
 The `sim.sh` does both simulation and postprocessing by calling the MD engine and then `postprocess.py`.
 The `postprocess.py` for now calculates contact map of CA atoms using 8 Angstrom cutoff.
+You can modify it so it generates something that fits your scientific goal 
+(e.g. torsional angle of all backbone + side chains).
 `postprocess.py` saves results in `Simulations/data/{round}_{sim_idx}.npy`.
 
 In the train & propose stage, EDDMD calls `train.py` to load all `.npy` data, train a convolutional 
@@ -94,9 +97,11 @@ The first three are round, simulation index, and frame.
 E.g. In the case of contact map matrices, output is `N_frames * (3 + N_residue * N_residue)`)
 1. Edit `train.py` so that it takes your data and processes it correctly. 
 You don't necessarily need to use a CVAE - you can do any model, ML or not, 
-so long as it selects some frames for next rounds
-1. Edit `model.py` if you choose to use CVAE - make sure the input dimensions match number of residues of your protein.
-In case you have an odd number of residues, use ZeroPadding2D in encoder and Cropping2D in decoder. Use `model_dim.py` to check your model dimensions.
+so long as it selects some frames for the next round.
+1. Edit or create another `model.py` if you choose to use CVAE - 
+make sure the input dimensions match number of residues of your protein.
+In case you have an odd number of residues, use ZeroPadding2D in encoder and Cropping2D in decoder. 
+Use `model_dim.py` to check your model dimensions.
 
 With all things edited, launch by `sh main.sh`. You should see progress.
 
@@ -119,6 +124,8 @@ Since the `eps` of DBSCAN dictates how many outliers there are, I allowed it to 
 The goal is to select an `eps` that generates slightly more outliers than number of individual simulations.
 E.g. if I try to select 6 simulations, then 6 outliers is better than 8 than 20 than 4 than 0.
 
-Also, the CA maps are frequently duplicated, so one can actually group them in DBSCAN by putting `sample_weights`
-on every unique CA map vector (flattened matrix). This saves tremendous amount of DBSCAN time (for me 50s -> 0.4 s).
+Also, in smaller systems the CA maps are frequently duplicated,
+so one can actually group them in DBSCAN by putting `sample_weights`
+on every unique CA map vector (flattened matrix). 
+This saves tremendous amount of DBSCAN time (for me 50s -> 0.4 s).
 
