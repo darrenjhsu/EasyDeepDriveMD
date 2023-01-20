@@ -14,7 +14,7 @@ If you are on Summit like I do, you can use the open-ce as your base environment
 
 ```bash
 module load cuda gcc fftw
-# with your conda manager
+# with your conda env manager - if you don't have one, see below
 conda create -p /your/conda/env/path --clone /sw/summit/open-ce/anaconda-base/envs/open-ce-1.5.2-py39-0
 conda activate -p /your/conda/env/path
 pip install MDAnalysis
@@ -24,6 +24,18 @@ Afterwards, make sure MDAnalysis runs by
 ```bash
 python
 import MDAnalysis as mda
+```
+
+### If you don't have a conda env manager (on Summit)
+
+Installing one is easy; highly recommended
+
+``` bash
+wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-ppc64le.sh
+bash Miniconda3-latest-Linux-ppc64le.sh -b -p miniconda
+# Initialize your ~/.bash_profile
+miniconda/bin/conda init bash
+source ~/.bashrc
 ```
 
 ## Structure
