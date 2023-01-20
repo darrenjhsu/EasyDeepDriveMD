@@ -40,7 +40,7 @@ source ~/.bashrc
 
 ## Structure
 
-I suggest something like this:
+I suggest something like this (for NAMD runs):
 
 ```
 Experiment/
@@ -52,6 +52,20 @@ Experiment/
   |- Templates/
   |    |- protein_init.pdb
   |    |- sampling.conf
+  |- EasyDeepDriveMD/ (this repo)
+  |
+```
+
+If you run with AMBER, perhaps something like this would work:
+
+```
+Experiment/
+  |- Structures/
+  |    |- protein.parm7
+  |    |- protein.rst7
+  |- Templates/
+  |    |- protein_init.rst7
+  |    |- sampling.in
   |- EasyDeepDriveMD/ (this repo)
   |
 ```
@@ -97,12 +111,12 @@ This workflow is basically identical to the file-based DeepDriveMD (DeepDriveMD-
 
 ## How to use (on Summit)
 
-You basically have to edit every `.sh` and `.py` files in this folder, tailored to your simulation goals,
+You basically have to edit every `.sh` and `.py` files in this folder, tailored to your simulation engines and goals,
 which is why I recommend having individual copies of this repo for every `Experiment/`.
 
 1. Place all necessary files
 1. Edit `main.sh` so that the initial variables point to correct files
-1. Edit `sim.sh` so that your computer calls the correct MD engine
+1. Edit `sim.sh` so that your computer calls the correct MD engine with correct arguments
 1. Edit `postprocess.py` so that it generates the data you want 
 (output is `N_frames * (3 + N_features)` for every simulation. 
 The first three are round, simulation index, and frame. 
