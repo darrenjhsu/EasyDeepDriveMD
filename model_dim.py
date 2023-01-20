@@ -3,6 +3,6 @@
 
 from model import *
 
-model = CVAE(10)
+model = CVAE(2)
 model.encoder.summary()
 model.decoder.summary()

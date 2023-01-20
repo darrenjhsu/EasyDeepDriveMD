@@ -8,5 +8,5 @@
 source /gpfs/alpine/chm188/scratch/djh992/MD_setup.sh
 source ~/.cddmdrc
 
-sh main.sh > test4.log
+sh main.sh > test0.log
 wait

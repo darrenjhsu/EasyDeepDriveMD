@@ -2,7 +2,7 @@
 
 import sys, os
 
-if len(sys.argv) < 4:
+if len(sys.argv) < 6:
     print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name>')
     exit()
 
@@ -82,7 +82,7 @@ train_dataset = (tf.data.Dataset.from_tensor_slices(train_data).batch(batch_size
 valid_dataset = (tf.data.Dataset.from_tensor_slices(valid_data).batch(batch_size))
 
 print("Training CVAE ...")
-model = CVAE(10)
+model = CVAE(2)
 if round_idx > 0:
     try:
         latest = tf.train.latest_checkpoint(f'../Simulations/saved_models/round_{round_idx-1}/')
@@ -139,12 +139,12 @@ print(CM_embed[0].shape)
 
 
 print("Running DBSCAN in latent space ...")
+eps_init = 0.3
 if round_idx > 0:
     try:
         with open('../Simulations/eps','r') as f:
             eps_init = float(f.read().strip())
     except Exception as e:
-        eps_init = 0.3
         print(e)
 if eps_init < 0.25:
     eps_choices = np.linspace(0.45, 0.05, num = 9)
