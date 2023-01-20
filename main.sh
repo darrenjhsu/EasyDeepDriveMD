@@ -6,8 +6,9 @@
 n_rounds=80
 n_sims=6
 psf=../Structures/CsA_wb.psf
-init_coord=../Template/CsA_init.pdb
-sim_config=../Template/CsA.conf
+template_folder=../Template
+init_coord=CsA_init.pdb
+sim_config=CsA.conf
 # This has to match the output of your simulations
 sample_dcd=CsA_sample.dcd
 
@@ -36,7 +37,7 @@ do
     for idx in `seq 0 $((n_sims -1))`
     do
       mkdir -p ../Simulations/$round/$idx
-      cp $sim_config ../Simulations/$round/$idx/
+      cp ${template_folder}/${sim_config} ../Simulations/$round/$idx/
     done
      
     # Copy initial coordinates for round 0
@@ -44,7 +45,7 @@ do
       echo "`date` Copy initial coord for round 0"
       for idx in `seq 0 $((n_sims -1))`
       do
-        cp $init_coord ../Simulations/$round/$idx/
+        cp ${template_folder}/${init_coord} ../Simulations/$round/$idx/
       done
     fi
 

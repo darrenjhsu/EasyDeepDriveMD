@@ -21,7 +21,7 @@ round_idx = int(sys.argv[1])
 n_sim = int(sys.argv[2])
 psf = sys.argv[3]
 dcd_fname = sys.argv[4]
-init_fname = sys.argv[5].split('/')[-1]
+init_fname = sys.argv[5]
 
 CM_this = []
 
