@@ -21,6 +21,7 @@ If you are on Summit like I do, you can use the open-ce as your base environment
 module load cuda gcc fftw
 # with your conda manager
 conda create -p /your/conda/env/path --clone /sw/summit/open-ce/anaconda-base/envs/open-ce-1.5.2-py39-0
+conda activate -p /your/conda/env/path
 pip install MDAnalysis
 ```
 
