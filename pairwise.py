@@ -2,7 +2,7 @@
 import sys, os
 
 if len(sys.argv) < 6:
-    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <just the dcd> <initial coord file name>')
+    print('Usage: python train.py <round index> <num of sim per round> <relative psf file path> <dcd basename> <initial coord file basename>')
     exit()
 
 import numpy as np
@@ -53,12 +53,12 @@ init_fname = sys.argv[5].split('/')[-1]
 
 t0 = time.time()
 t00 = time.time()
-if round_idx > 1:
-    print(f"Loading npy of previous rounds: round 0 to {round_idx-2}")
-    CA_prev = np.load(f'../Simulations/data/CA_rounds_0_to_{round_idx-2}.npy')
-    PD_prev_sp = sp.load_npz(f'../Simulations/data/PD_rounds_0_to_{round_idx-2}.npz')
+if round_idx > 0:
+    print(f"Loading npy of previous rounds: round 0 to {round_idx-1}")
+    CA_prev = np.load(f'../Simulations/data/CA_rounds_0_to_{round_idx-1}.npy')
+    PD_prev_sp = sp.load_npz(f'../Simulations/data/PD_rounds_0_to_{round_idx-1}.npz')
     #PD_prev = np.load(f'../Simulations/data/PD_rounds_0_to_{round_idx-2}.npy')
-    RMSD_prev = np.load(f'../Simulations/data/RMSD_rounds_0_to_{round_idx-2}.npy')
+    RMSD_prev = np.load(f'../Simulations/data/RMSD_rounds_0_to_{round_idx-1}.npy')
     print(CA_prev.shape, PD_prev_sp.shape)
 t1 = time.time()
 print(f"Load old: {t1-t0:.3f} s")
@@ -67,10 +67,10 @@ CA_this = []
 RMSD_this = []
 
 for i in range(n_sim):
-    print(f"Loading npy of last round: idx {i}")
+    print(f"Loading npy of this round: idx {i}")
     try:
-        CA_this.append(np.load(f'../Simulations/data/CA_{round_idx-1}_{i}.npy'))
-        RMSD_this.append(np.load(f'../Simulations/data/RMSD_{round_idx-1}_{i}.npy'))
+        CA_this.append(np.load(f'../Simulations/data/CA_{round_idx}_{i}.npy'))
+        RMSD_this.append(np.load(f'../Simulations/data/RMSD_{round_idx}_{i}.npy'))
     except Exception as e:
         print(e)
 
@@ -81,7 +81,7 @@ CA_this = np.concatenate(CA_this, axis=0)
 RMSD_this = np.concatenate(RMSD_this, axis=0)
 
 print("Concatenating npy of this round with all previous rounds")
-if round_idx > 1:
+if round_idx > 0:
     CA_all = np.concatenate([CA_prev, CA_this], axis=0)
     RMSD_all = np.concatenate([RMSD_prev, RMSD_this], axis=0)
 else:
@@ -97,9 +97,9 @@ t1 = time.time()
 print(f"Concat: {t1-t0:.3f} s")
 t0 = time.time()
 
-print(f"Saving npys of round 0 to {round_idx-1}")
-np.save(f'../Simulations/data/CA_rounds_0_to_{round_idx-1}.npy', CA_all)
-np.save(f'../Simulations/data/RMSD_rounds_0_to_{round_idx-1}.npy', RMSD_all)
+print(f"Saving npys of round 0 to {round_idx}")
+np.save(f'../Simulations/data/CA_rounds_0_to_{round_idx}.npy', CA_all)
+np.save(f'../Simulations/data/RMSD_rounds_0_to_{round_idx}.npy', RMSD_all)
 t1 = time.time()
 print(f"Save file: {t1-t0:.3f} s")
 t0 = time.time()
@@ -113,17 +113,17 @@ t1 = time.time()
 print(f"Reshape: {t1-t0:.3f} s")
 t0 = time.time()
 
-with mp.Pool(36) as p:
+with mp.Pool() as p:
     # this vs this
     res_tt = p.starmap(pairwise_RMSD_row, zip(repeat(CA_this), [CA_this[i] for i in range(len(CA_this))])) 
-    if round_idx > 1:
+    if round_idx > 0:
         # prev vs this
         res_pt = p.starmap(pairwise_RMSD_row, zip(repeat(CA_prev), [CA_this[i] for i in range(len(CA_this))]))
     #res_at = p.starmap(pairwise_RMSD_row, zip(repeat(CA_all), [CA_this[i] for i in range(len(CA_this))])) 
 PD_tt = np.vstack(res_tt)
 #PD_at = np.vstack(res_at)
 PD_tt *= (PD_tt < 1.3)
-if round_idx > 1:
+if round_idx > 0:
     PD_pt = np.vstack(res_pt)
     PD_pt *= (PD_pt < 1.3)
     PD_tp = PD_pt.T
@@ -131,7 +131,7 @@ t1 = time.time()
 print(f'MP row method: {(t1-t0)*1000:.1f} ms')
 t0 = time.time()
 
-if round_idx > 1:
+if round_idx > 0:
     PD_len = len(CA_prev) + len(CA_this)
     # Calculate ground truth
     #PD_all = np.zeros((PD_len, PD_len))
@@ -164,7 +164,7 @@ t1 = time.time()
 print(f"Assign: {t1-t0:.3f} s")
 t0 = time.time()
 
-sp.save_npz(f'../Simulations/data/PD_rounds_0_to_{round_idx-1}.npz', PD_all_sp)
+sp.save_npz(f'../Simulations/data/PD_rounds_0_to_{round_idx}.npz', PD_all_sp)
 #np.save(f'../Simulations/data/PD_rounds_0_to_{round_idx-1}.npy', PD_all)
 
 t1 = time.time()
@@ -173,7 +173,7 @@ t0 = time.time()
 
 from sklearn.cluster import DBSCAN
 
-cls = DBSCAN(eps=1.0, min_samples=5, metric='precomputed')
+cls = DBSCAN(eps=1.3, min_samples=5, metric='precomputed')
 #cls.fit(PD_all)
 #print('Number of clusters (dense):', cls.labels_.max()+1)
 #print('Number of outliers (dense):', np.sum(cls.labels_ == -1))
@@ -200,19 +200,23 @@ for idx, sel in enumerate(select):
     t11 = time.time()
     #print(f"  makedir: {t11-t01:.3f} s")
     t01 = time.time()
-    U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}')
+    U = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}.dcd')
+    V = mda.Universe(psf, f'../Simulations/{sel[0]}/{sel[1]}/{dcd_fname}.veldcd', format='DCD')
     t11 = time.time()
     #print(f"  loadtraj: {t11-t01:.3f} s")
     t01 = time.time()
     U.trajectory[sel[2]]
+    V.trajectory[sel[2]]
     t11 = time.time()
     #print(f"  goto: {t11-t01:.3f} s")
     t01 = time.time()
     Uall = U.select_atoms('all')
+    Vall = V.select_atoms('all')
     t11 = time.time()
     #print(f"  select: {t11-t01:.3f} s")
     t01 = time.time()
-    Uall.write(f'../Simulations/{round_idx+1}/{idx}/{init_fname}', bonds=None) # bonds=None makes write out much faster
+    Uall.write(f'../Simulations/{round_idx+1}/{idx}/{init_fname}.pdb', bonds=None) # bonds=None makes write out much faster
+    Vall.write(f'../Simulations/{round_idx+1}/{idx}/{init_fname}_v.pdb', bonds=None) # bonds=None makes write out much faster
     t11 = time.time()
     #print(f"  write: {t11-t01:.3f} s")
     t01 = time.time()

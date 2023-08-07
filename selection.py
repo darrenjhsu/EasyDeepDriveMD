@@ -51,17 +51,23 @@ def select_FAST(frames, CM_label, n_sim, guide, metric='min', cls=None, select_o
     outliers = frames[CM_label == -1]
     cluster_count = {x: np.sum(CM_label == x) for x in range(0, CM_label.max()+1)}
     print(cluster_count)
+
+
     # Determine min samples
     if cls is not None:
         min_samples = cls.min_samples
     else:
         min_samples = np.array(list(cluster_count.values())).min()
     # Determine undirected reward
-    max_samples = np.array(list(cluster_count.values())).max()
-    cluster_ur = {x: (max_samples - cluster_count[x]) / (max_samples - min_samples) for x in cluster_count.keys()}
+    try:
+        max_samples = np.array(list(cluster_count.values())).max()
+    except:
+        # This happens when there is no clusters but outliers
+        max_samples = min_samples + 1
+    cluster_ur = {x: min(1.0, (max_samples - cluster_count[x]) / (max_samples - min_samples)) for x in cluster_count.keys()}
     cluster_ur[-1] = 1.0
     sample_ur = np.array([cluster_ur[x] for x in CM_label])
-    sample_ur[sample_ur > 1] = 1.0
+    #sample_ur[sample_ur > 1] = 1.0
 
     # Determine directed reward
     guide_max = np.array(list(guide.values())).max()
@@ -78,7 +84,9 @@ def select_FAST(frames, CM_label, n_sim, guide, metric='min', cls=None, select_o
     CM_idx = np.arange(len(CM_label))
     candidates_cluster = np.array([CM_idx[CM_label == x][np.argmax(sample_r[CM_label == x])] for x in range(0, CM_label.max()+1)])
 
-    if select_outliers:
+    if len(cluster_count) == 0:
+        candidates = candidates_outlier
+    elif select_outliers:
         candidates = np.concatenate([candidates_outlier, candidates_cluster])
     else:
         candidates = candidates_cluster

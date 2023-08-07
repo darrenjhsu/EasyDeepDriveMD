@@ -1,12 +1,19 @@
 #!/bin/bash
-#BSUB -nnodes 1
-#BSUB -q batch-hm
-#BSUB -W 24:00
-#BSUB -J DDMD_NAMD3 
-#BSUB -P STF006
+#SBATCH -N 1
+#SBATCH -G 1
+#SBATCH -p queue 
+#SBATCH -c 32
+#SBATCH --time 240
+#SBATCH --job-name NAMD3_deepdriveMD 
+#SBATCH -q normal
+#SBATCH --export=ALL
 
-source /gpfs/alpine/chm188/scratch/djh992/MD_setup.sh
-source ~/.cddmdrc
+pwd; hostname; date
+eval "$(conda shell.bash hook)"
+source ~/.bashrc
+conda activate eddmd
 
-sh main.sh > test8.log
+nvidia-cuda-mps-control -d
+
+bash main.sh
 wait

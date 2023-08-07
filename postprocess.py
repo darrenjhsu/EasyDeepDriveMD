@@ -19,7 +19,7 @@ try:
 except:
     target = None
 
-U = mda.Universe(psf, f'../Simulations/{round_idx}/{sim_idx}/{dcd}')
+U = mda.Universe(psf, f'../Simulations/{round_idx}/{sim_idx}/{dcd}.dcd')
 
 CA = U.select_atoms('backbone or name CB')
 CA_list = []
